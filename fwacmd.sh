@@ -17,7 +17,7 @@ function web_start() {
 	cd ~/Farmbot-Web-App
 	source ~/.rvm/scripts/rvm
 	rvm --default use 2.4.2
-	cp ~/fwq-quick-install/application.example.yml config/application.yml
+	cp ~/fwa-quick-install/application.example.yml config/application.yml
 	myip=`ip route get 8.8.8.8 | awk '{print $NF; exit}'`
 	secret=`rake secret`
 	sed -i s/changeme-io/$myip/g config/application.yml
