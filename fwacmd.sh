@@ -8,7 +8,7 @@ function mqtt_start() {
 	cd ~/Farmbot-Web-App
 	source ~/.rvm/scripts/rvm
 	rvm --default use 2.4.2
-	RAILS_ENV=test
+#	RAILS_ENV=test
 	rails mqtt:start
 	exit
 }
@@ -22,14 +22,14 @@ function web_start() {
 	secret=`rake secret`
 	sed -i s/changeme-io/$myip/g config/application.yml
 	sed -i s/rake-secret/$secret/g config/application.yml
-	RAILS_ENV=test
+#	RAILS_ENV=test
 	rails api:start
 	exit
 }
 
 function install() {
     # Remove old (possibly broke) docker versions
-    sudo apt-get remove docker docker-engine docker.io
+    sudo apt-get remove docker docker-engine docker.io --yes
 
     # Install docker
     sudo apt-get install apt-transport-https ca-certificates curl software-properties-common --yes
@@ -53,12 +53,12 @@ function install() {
 
     # Install Node
     curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-    sudo apt-get install -y nodejs --yes
+    sudo apt-get install nodejs --yes
 
     # Install Yarn
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-    sudo apt-get update && sudo apt-get install yarn
+    sudo apt-get update && sudo apt-get install yarn --yes
 
     # Install database deps
     sudo apt-get install libpq-dev postgresql-contrib --yes
@@ -90,11 +90,13 @@ EOF
     rvm --default use 2.4.2
     # create database
     rake db:create:all db:migrate db:seed
+    exit
+}
 
+function test() {
     # run test
     RAILS_ENV=test rake db:create db:migrate && rspec spec
     npm run test
-    
     exit
 }
 
@@ -102,6 +104,9 @@ case ${1} in
 	"install")
 		install
 		;;
+    "test")
+        test
+        ;;
 	"mqtt")
 		mqtt_start
 		;;
@@ -109,7 +114,7 @@ case ${1} in
 		web_start
 		;;
 	*)
-		echo "Usage: ${0} install|mqtt|web"
+		echo "Usage: ${0} install|mqtt|web|test"
 		;;
 esac
 
