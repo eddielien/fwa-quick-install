@@ -18,8 +18,12 @@ function web_start() {
 	source ~/.rvm/scripts/rvm
 	rvm --default use 2.4.2
 	cp ~/fwa-quick-install/application.example.yml config/application.yml
+	cp ~/fwa-quick-install/webpack.dev.js config/webpack.dev.js
+	cp ~/fwa-quick-install/transport.rb app/models/transport.rb
 	myip=`ip route get 8.8.8.8 | awk '{print $NF; exit}'`
 	secret=`rake secret`
+	sed -i s/localhost/$myip/g config/webpack.dev.js
+	sed -i s/localhost/$myip/g app/models/transport.rb
 	sed -i s/changeme-io/$myip/g config/application.yml
 	sed -i s/rake-secret/$secret/g config/application.yml
 	RAILS_ENV=test
@@ -29,7 +33,7 @@ function web_start() {
 
 function install() {
     # Remove old (possibly broke) docker versions
-    sudo apt-get remove docker docker-engine docker.io
+    sudo apt-get remove docker docker-engine docker.io --yes
 
     # Install docker
     sudo apt-get install apt-transport-https ca-certificates curl software-properties-common --yes
@@ -53,12 +57,12 @@ function install() {
 
     # Install Node
     curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-    sudo apt-get install -y nodejs --yes
+    sudo apt-get install nodejs --yes
 
     # Install Yarn
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
     echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-    sudo apt-get update && sudo apt-get install yarn
+    sudo apt-get update && sudo apt-get install yarn --yes
 
     # Install database deps
     sudo apt-get install libpq-dev postgresql-contrib --yes
@@ -91,6 +95,12 @@ EOF
     # create database
     rake db:create:all db:migrate db:seed
 
+    RAILS_ENV=test rake db:create db:migrate && rspec spec
+
+    exit
+}
+
+function run_test() {
     # run test
     RAILS_ENV=test rake db:create db:migrate && rspec spec
     npm run test
@@ -108,8 +118,11 @@ case ${1} in
 	"web")
 		web_start
 		;;
+	"test")
+		run_test
+		;;
 	*)
-		echo "Usage: ${0} install|mqtt|web"
+		echo "Usage: ${0} install|mqtt|web|test"
 		;;
 esac
 
