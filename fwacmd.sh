@@ -8,7 +8,8 @@ function mqtt_start() {
 	cd ~/Farmbot-Web-App
 	source ~/.rvm/scripts/rvm
 	rvm --default use 2.4.2
-	RAILS_ENV=test
+	RAILS_ENV=development
+	sed -i s/sudo //i mqtt/server.rb
 	rails mqtt:start
 	exit
 }
@@ -26,7 +27,7 @@ function web_start() {
 	sed -i s/localhost/$myip/g app/models/transport.rb
 	sed -i s/changeme-io/$myip/g config/application.yml
 	sed -i s/rake-secret/$secret/g config/application.yml
-	RAILS_ENV=test
+	RAILS_ENV=development
 	rails api:start
 	exit
 }
@@ -42,6 +43,7 @@ function install() {
     sudo apt-get update --yes
     sudo apt-get install docker-ce --yes
     sudo docker run hello-world # Should run!
+    sudo usermod -aG docker $USER
 
     # Install RVM
     sudo apt-get install libgdbm-dev libncurses5-dev automake libtool bison libffi-dev --yes
@@ -69,7 +71,7 @@ function install() {
 
     # Install FarmBot Web App
     sudo apt-get install git --yes
-    git clone https://github.com/FarmBot/Farmbot-Web-App --depth=10
+    git clone https://github.com/FarmBot/Farmbot-Web-App -b master --depth=10
     cd Farmbot-Web-App
     source ~/.rvm/scripts/rvm
     rvm --default use 2.4.2
@@ -94,9 +96,58 @@ EOF
     rvm --default use 2.4.2
     # create database
     rake db:create:all db:migrate db:seed
+    RAILS_ENV=development rake db:create db:migrate && rspec spec
 
-    RAILS_ENV=test rake db:create db:migrate && rspec spec
+    exit
+}
 
+function reinstall() {
+    cd $HOME
+    rm -rf Farmbot-Web-App
+    git clone https://github.com/FarmBot/Farmbot-Web-App -b master --depth=10
+    cd Farmbot-Web-App
+    source ~/.rvm/scripts/rvm
+    rvm --default use 2.4.2
+    gem install bundler
+    npm install yarn
+    bundle install
+    yarn install
+    cp config/database.example.yml config/database.yml    
+    cp ~/fwa-quick-install/application.example.yml config/application.yml
+    myip=`ip route get 8.8.8.8 | awk '{print $NF; exit}'`
+    secret=`rake secret`
+    sed -i s/changeme-io/$myip/g config/application.yml
+    sed -i s/rake-secret/$secret/g config/application.yml
+
+    source ~/.rvm/scripts/rvm
+    rvm --default use 2.4.2
+    # create database
+    rake db:create:all db:migrate db:seed
+    RAILS_ENV=development rake db:create db:migrate && rspec spec
+    exit
+}
+
+function upgrade() {
+    cd Farmbot-Web-App
+    git pull --force
+    source ~/.rvm/scripts/rvm
+    rvm --default use 2.4.2
+    gem install bundler
+    npm install yarn
+    bundle install
+    yarn install
+    cp config/database.example.yml config/database.yml    
+    cp ~/fwa-quick-install/application.example.yml config/application.yml
+    myip=`ip route get 8.8.8.8 | awk '{print $NF; exit}'`
+    secret=`rake secret`
+    sed -i s/changeme-io/$myip/g config/application.yml
+    sed -i s/rake-secret/$secret/g config/application.yml
+
+    source ~/.rvm/scripts/rvm
+    rvm --default use 2.4.2
+    # create database
+    rake db:create:all db:migrate db:seed
+    RAILS_ENV=development rake db:create db:migrate && rspec spec
     exit
 }
 
@@ -112,6 +163,12 @@ case ${1} in
 	"install")
 		install
 		;;
+	"reinstall")
+		reinstall
+		;;
+	"upgrade")
+		upgrade
+		;;
 	"mqtt")
 		mqtt_start
 		;;
@@ -122,7 +179,7 @@ case ${1} in
 		run_test
 		;;
 	*)
-		echo "Usage: ${0} install|mqtt|web|test"
+		echo "Usage: ${0} install|reinstall|upgrade|mqtt|web|test"
 		;;
 esac
 
